@@ -6,8 +6,11 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 from tkinter import messagebox
 import json
+import pystray
+import PIL.Image
+import threading
 
-frequency = 120
+image = PIL.Image.open("icon-png.png")
 
 def set_wallpaper(api_key):
     endpoint = 'https://api.unsplash.com/photos/random'
@@ -42,12 +45,12 @@ def save_api_key(api_key):
         os.makedirs(appdata_dir)
     settings_file = os.path.join(appdata_dir, 'settings.json')
     with open(settings_file, 'w') as file:
-        json.dump({'api_key': api_key}, file)
+        json.dump({'api_key': api_key, 'frequency': 120}, file)
 
 def show_api_key_ui():
     root = tk.Tk()
     root.title("Wally")
-    root.iconbitmap('./src/images/icon-ico.ico')
+    root.iconbitmap('./icon-ico.ico')
     root.resizable(False, False)
     style = ttk.Style()
     style.configure('TLabel', font=('Arial', 14))
@@ -81,14 +84,37 @@ def load_api_key():
             return data.get('api_key')
     return None
 
+def load_frequency():
+    appdata_dir = os.path.join(os.getenv('APPDATA'), 'Wally')
+    settings_file = os.path.join(appdata_dir, 'settings.json')
+    if os.path.exists(settings_file):
+        with open(settings_file, 'r') as file:
+            data = json.load(file)
+            return data.get('frequency', 120)
+    return 120
+
 def is_valid_api_key(api_key):
     endpoint = 'https://api.unsplash.com/photos/random'
     params = {'client_id': api_key}
     response = requests.get(endpoint, params=params)
     return response.status_code == 200
 
+def on_exit_clicked(icon, item):
+    os._exit(0)
+
+def tray_thread():
+    icon = pystray.Icon("Wally", image, menu=pystray.Menu(
+        pystray.MenuItem("Exit Wally", on_exit_clicked)
+    ))
+    icon.run()
+
+tray_icon_thread = threading.Thread(target=tray_thread)
+tray_icon_thread.daemon = True
+tray_icon_thread.start()
+
 def main():
     api_key = load_api_key()
+    frequency = load_frequency()
     if not api_key:
         show_api_key_ui()
         api_key = load_api_key()
