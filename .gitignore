@@ -1,2 +1,5 @@
 build
 CTI.iss
+src/build
+src/dist
+src/Wally.sepc

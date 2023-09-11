@@ -112,6 +112,7 @@ def is_valid_api_key(api_key):
 
 def on_settings_clicked(icon, item):
     show_api_key_ui()
+    
 def on_exit_clicked(icon, item):
     os._exit(0)
 
