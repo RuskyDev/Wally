@@ -3,8 +3,7 @@ import os
 import time
 import ctypes
 import tkinter as tk
-from tkinter import ttk, simpledialog
-from tkinter import messagebox
+from tkinter import ttk, simpledialog, messagebox
 import json
 import pystray
 import PIL.Image
@@ -36,7 +35,7 @@ def write_error_to_log(error_message):
     with open(log_file, 'a') as file:
         file.write('[Error]: ' + error_message + '\n')
 
-def save_api_key(api_key):
+def save_api_key(api_key, frequency):
     if not is_valid_api_key(api_key):
         messagebox.showerror("Error", "Invalid API Key. Please check and try again.")
         os._exit(0)
@@ -45,7 +44,7 @@ def save_api_key(api_key):
         os.makedirs(appdata_dir)
     settings_file = os.path.join(appdata_dir, 'settings.json')
     with open(settings_file, 'w') as file:
-        json.dump({'api_key': api_key, 'frequency': 120}, file)
+        json.dump({'api_key': api_key, 'frequency': frequency}, file)
 
 def show_api_key_ui():
     root = tk.Tk()
@@ -60,16 +59,28 @@ def show_api_key_ui():
     label.grid(row=0, column=0, padx=10, pady=10)
     api_key_entry = ttk.Entry(root)
     api_key_entry.grid(row=1, column=0, padx=10, pady=10)
-    save_button = ttk.Button(root, text="Save API Key", command=lambda: save_api_key_from_ui(api_key_entry.get()))
-    save_button.grid(row=2, column=0, padx=10, pady=10)
+    frequency_label = ttk.Label(root, text="Set Wallpaper Frequency (seconds):")
+    frequency_label.grid(row=2, column=0, padx=10, pady=10)
+    frequency_entry = ttk.Entry(root)
+    frequency_entry.grid(row=3, column=0, padx=10, pady=10)
+    save_button = ttk.Button(root, text="Save Settings", command=lambda: save_settings_from_ui(api_key_entry.get(), frequency_entry.get()))
+    save_button.grid(row=4, column=0, padx=10, pady=10)
 
-    def save_api_key_from_ui(api_key):
+    def save_settings_from_ui(api_key, frequency):
         if not api_key:
             messagebox.showerror("Error", "API Key cannot be empty.")
             return
-        save_api_key(api_key)
+        try:
+            frequency = int(frequency)
+            if frequency < 60 or frequency > 3600:
+                messagebox.showerror("Error", "Frequency must be between 60 and 3600 seconds.")
+                return
+        except ValueError:
+            messagebox.showerror("Error", "Invalid frequency value. Please enter a number.")
+            return
+        save_api_key(api_key, frequency)
         if is_valid_api_key(api_key):
-            messagebox.showinfo("Success", "API Key saved successfully!")
+            messagebox.showinfo("Success", "Settings saved successfully!")
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", lambda: os._exit(0))
@@ -99,11 +110,14 @@ def is_valid_api_key(api_key):
     response = requests.get(endpoint, params=params)
     return response.status_code == 200
 
+def on_settings_clicked(icon, item):
+    show_api_key_ui()
 def on_exit_clicked(icon, item):
     os._exit(0)
 
 def tray_thread():
     icon = pystray.Icon("Wally", image, menu=pystray.Menu(
+        pystray.MenuItem("Settings", on_settings_clicked),
         pystray.MenuItem("Exit Wally", on_exit_clicked)
     ))
     icon.run()
